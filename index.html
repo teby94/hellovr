@@ -1,29 +1,878 @@
 <!DOCTYPE html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8">
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <style>body { margin: 0; overflow: hidden }</style>
-  </head>
-  <body>
-    <a-scene>
-      <!-- ambient light so you can see objects -->
-      <a-entity light="type: ambient; intensity: 1"></a-entity>
+    <title>CRS-R Visual Function Pupillometry Assessment</title>
+    <meta name="description" content="VR Pupillometry Assessment for Comatose Patients">
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/supermedium/superframe@master/components/environment/dist/aframe-environment-component.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">CRS-R Visual Function Assessment | Press B to return to menu</div>
+    
+    <a-scene 
+        vr-mode-ui="enabled: true"
+        cursor="rayOrigin: mouse"
+        renderer="colorManagement: true; physicallyCorrectLights: true; shadowMap.enabled: true; shadowMap.type: pcf">
+        
+        <a-assets>
+            <!-- Define reusable assets -->
+            <a-mixin id="menu-button"
+                geometry="primitive: box; depth: 0.2; height: 0.8; width: 3"
+                material="color: #1565c0; metalness: 0; roughness: 1"
+                animation__mouseenter="property: scale; to: 1.05 1.05 1.05; startEvents: mouseenter; dur: 200"
+                animation__mouseleave="property: scale; to: 1 1 1; startEvents: mouseleave; dur: 200"
+                animation__click="property: scale; to: 0.95 0.95 0.95; startEvents: click; dur: 100">
+            </a-mixin>
+            
+            <a-mixin id="button-text"
+                text="align: center; width: 6; color: #ffffff; font: roboto; zOffset: 0.01">
+            </a-mixin>
+            
+            <!-- Video asset for fixation assessment -->
+            <!-- 3D Model asset for photorealistic human -->
+            <a-asset-item id="humanModel" src="YOUR_MODEL_URL_HERE.glb"></a-asset-item>
+            
+            <!-- Alternative: AI-generated video -->
+            <!-- Option 1: Replace with your D-ID video URL -->
+            <video id="humanVideo" 
+                   src="YOUR_VIDEO_URL_HERE.mp4" 
+                   autoplay 
+                   loop 
+                   muted
+                   crossorigin="anonymous">
+            </video>
+            
+            <!-- Option 2: For quick testing, uncomment this working example -->
+            <!-- <video id="humanVideo" 
+                   src="https://cdn.pixabay.com/vimeo/458832121/woman-58142.mp4?width=640&hash=e5f0a30c5e6d7c9a9b8b4f4f4f4f4f4f4f4f4f4f" 
+                   autoplay 
+                   loop 
+                   muted
+                   crossorigin="anonymous">
+            </video> -->
+            
+            <!-- Alternative: Static photorealistic image -->
+            <img id="humanImage" src="YOUR_IMAGE_URL_HERE.jpg" crossorigin="anonymous">
+        </a-assets>
 
-      <!-- default camera at (0,1.6,0) looking toward -Z -->
-      <a-entity camera look-controls position="0 1.6 0"></a-entity>
+        <!-- Camera with controllers -->
+        <a-entity id="cameraRig" position="0 1.6 0">
+            <a-camera 
+                id="camera"
+                wasd-controls="enabled: false"
+                look-controls>
+                <a-cursor
+                    animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
+                    animation__fusing="property: scale; startEvents: fusing; from: 1 1 1; to: 0.1 0.1 0.1; dur: 1500"
+                    raycaster="objects: .clickable"
+                    geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025"
+                    material="color: white; shader: flat; opacity: 0.8">
+                </a-cursor>
+            </a-camera>
+            
+            <!-- Quest Controllers -->
+            <a-entity laser-controls="hand: right" raycaster="objects: .clickable"></a-entity>
+            <a-entity laser-controls="hand: left" raycaster="objects: .clickable"></a-entity>
+        </a-entity>
 
-      <!-- box two meters in front of you -->
-      <a-box position="0 1.6 -2" rotation="0 45 0" color="#4CC3D9"></a-box>
+        <!-- Main Menu Scene -->
+        <a-entity id="mainMenu" visible="true">
+            <!-- Simple sky background -->
+            <a-sky color="#2a3b4c"></a-sky>
+            
+            <!-- Simple ground plane -->
+            <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" color="#1a2b3c"></a-plane>
+            
+            <!-- Much brighter lighting setup -->
+            <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+            <a-light type="directional" 
+                     position="0 10 5" 
+                     color="#ffffff" 
+                     intensity="0.5">
+            </a-light>
+            
+            <!-- Title with 3D backdrop -->
+            <a-entity position="0 5.5 -6">
+                <a-box width="8" height="2.5" depth="0.3" 
+                       material="color: #5c6bc0; metalness: 0; roughness: 1">
+                </a-box>
+                <a-text
+                    value="CRS-R Visual Function\nPupillometry Assessment"
+                    position="0 0 0.16"
+                    align="center"
+                    width="12"
+                    color="#ffffff"
+                    font="roboto">
+                </a-text>
+            </a-entity>
+            
+            <!-- Menu Buttons -->
+            <a-entity id="menuButtons" position="0 1.2 -5">
+                <a-entity
+                    id="startleBtn"
+                    class="clickable menu-btn"
+                    mixin="menu-button"
+                    position="0 2 0"
+                    data-assessment="startle">
+                    <a-plane position="0 0 0.11" width="2.8" height="0.6" material="color: #000000; opacity: 0.8"></a-plane>
+                    <a-text value="Visual Startle" position="0 0 0.12" align="center" width="5" color="#ffffff"></a-text>
+                </a-entity>
+                
+                <a-entity
+                    id="fixationBtn"
+                    class="clickable menu-btn"
+                    mixin="menu-button"
+                    position="0 0.8 0"
+                    data-assessment="fixation">
+                    <a-plane position="0 0 0.11" width="2.8" height="0.6" material="color: #000000; opacity: 0.8"></a-plane>
+                    <a-text value="Visual Fixation" position="0 0 0.12" align="center" width="5" color="#ffffff"></a-text>
+                </a-entity>
+                
+                <a-entity
+                    id="pursuitBtn"
+                    class="clickable menu-btn"
+                    mixin="menu-button"
+                    position="0 -0.4 0"
+                    data-assessment="pursuit">
+                    <a-plane position="0 0 0.11" width="2.8" height="0.6" material="color: #000000; opacity: 0.8"></a-plane>
+                    <a-text value="Visual Pursuit" position="0 0 0.12" align="center" width="5" color="#ffffff"></a-text>
+                </a-entity>
+                
+                <a-entity
+                    id="recognitionBtn"
+                    class="clickable menu-btn"
+                    mixin="menu-button"
+                    position="0 -1.6 0"
+                    data-assessment="recognition">
+                    <a-plane position="0 0 0.11" width="2.8" height="0.6" material="color: #000000; opacity: 0.8"></a-plane>
+                    <a-text value="Object Recognition" position="0 0 0.12" align="center" width="5" color="#ffffff"></a-text>
+                </a-entity>
+                
+                <a-entity
+                    id="localizationBtn"
+                    class="clickable menu-btn"
+                    mixin="menu-button"
+                    position="0 -2.8 0"
+                    data-assessment="localization">
+                    <a-plane position="0 0 0.11" width="2.8" height="0.6" material="color: #000000; opacity: 0.8"></a-plane>
+                    <a-text value="Object Localization" position="0 0 0.12" align="center" width="5" color="#ffffff"></a-text>
+                </a-entity>
+            </a-entity>
+            
+            <!-- Instructions -->
+            <a-entity position="0 -2 -4">
+                <a-plane width="7" height="1.2" 
+                        material="color: #546e7a; opacity: 0.9"
+                        position="0 0 -0.01">
+                </a-plane>
+                <a-text
+                    value="Point controller and press trigger to select assessment\nPress B button to return to menu during assessment"
+                    position="0 0 0"
+                    align="center"
+                    width="6"
+                    color="#ffffff"
+                    font="roboto">
+                </a-text>
+            </a-entity>
+        </a-entity>
 
-      <!-- text one meter in front of you at eye‐level -->
-      <a-text
-        value="Hello, VR!"
-        position="0 1.6 -1"
-        align="center"
-        color="#333"
-        width="4">
-      </a-text>
+        <!-- Assessment Scenes (initially hidden) -->
+        
+        <!-- Visual Startle Assessment -->
+        <a-entity id="startleAssessment" visible="false">
+            <!-- Room Structure - 16x24 meter room (50% deeper) -->
+            <!-- Floor -->
+            <a-plane 
+                position="0 0 0" 
+                rotation="-90 0 0" 
+                width="16" 
+                height="24" 
+                material="color: #f5f5f5; roughness: 0.8; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Ceiling with subtle grid pattern for tiles -->
+            <a-plane 
+                position="0 4 0" 
+                rotation="90 0 0" 
+                width="16" 
+                height="24" 
+                material="color: #ffffff; roughness: 1; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Ceiling tile grid lines -->
+            <a-entity id="ceilingGrid">
+                <a-plane position="0 3.99 -8" width="16" height="0.02" rotation="90 0 0" material="color: #f0f0f0"></a-plane>
+                <a-plane position="0 3.99 -4" width="16" height="0.02" rotation="90 0 0" material="color: #f0f0f0"></a-plane>
+                <a-plane position="0 3.99 0" width="16" height="0.02" rotation="90 0 0" material="color: #f0f0f0"></a-plane>
+                <a-plane position="0 3.99 4" width="16" height="0.02" rotation="90 0 0" material="color: #f0f0f0"></a-plane>
+                <a-plane position="0 3.99 8" width="16" height="0.02" rotation="90 0 0" material="color: #f0f0f0"></a-plane>
+                <a-plane position="-4 3.99 0" width="0.02" height="24" rotation="90 90 0" material="color: #f0f0f0"></a-plane>
+                <a-plane position="0 3.99 0" width="0.02" height="24" rotation="90 90 0" material="color: #f0f0f0"></a-plane>
+                <a-plane position="4 3.99 0" width="0.02" height="24" rotation="90 90 0" material="color: #f0f0f0"></a-plane>
+            </a-entity>
+            
+            <!-- Back Wall (far end) -->
+            <a-plane 
+                position="0 2 -12" 
+                width="16" 
+                height="4" 
+                material="color: #fafafa; roughness: 0.9; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Front Wall (behind viewer) -->
+            <a-plane 
+                position="0 2 12" 
+                rotation="0 180 0"
+                width="16" 
+                height="4" 
+                material="color: #fafafa; roughness: 0.9; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Left Wall -->
+            <a-plane 
+                position="-8 2 0" 
+                rotation="0 90 0"
+                width="24" 
+                height="4" 
+                material="color: #fafafa; roughness: 0.9; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Right Wall -->
+            <a-plane 
+                position="8 2 0" 
+                rotation="0 -90 0"
+                width="24" 
+                height="4" 
+                material="color: #fafafa; roughness: 0.9; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Baseboard trim -->
+            <a-box position="0 0.05 -11.95" width="16" height="0.1" depth="0.1" material="color: #e0e0e0"></a-box>
+            <a-box position="0 0.05 11.95" width="16" height="0.1" depth="0.1" material="color: #e0e0e0"></a-box>
+            <a-box position="-7.95 0.05 0" width="0.1" height="0.1" depth="24" material="color: #e0e0e0"></a-box>
+            <a-box position="7.95 0.05 0" width="0.1" height="0.1" depth="24" material="color: #e0e0e0"></a-box>
+            
+            <!-- Crown molding -->
+            <a-box position="0 3.95 -11.95" width="16" height="0.1" depth="0.1" material="color: #f0f0f0"></a-box>
+            <a-box position="0 3.95 11.95" width="16" height="0.1" depth="0.1" material="color: #f0f0f0"></a-box>
+            <a-box position="-7.95 3.95 0" width="0.1" height="0.1" depth="24" material="color: #f0f0f0"></a-box>
+            <a-box position="7.95 3.95 0" width="0.1" height="0.1" depth="24" material="color: #f0f0f0"></a-box>
+            
+            <!-- Electrical outlets on walls -->
+            <a-box position="-7.9 0.3 -6" width="0.12" height="0.08" depth="0.02" material="color: #f5f5f5"></a-box>
+            <a-box position="-7.9 0.3 0" width="0.12" height="0.08" depth="0.02" material="color: #f5f5f5"></a-box>
+            <a-box position="-7.9 0.3 6" width="0.12" height="0.08" depth="0.02" material="color: #f5f5f5"></a-box>
+            <a-box position="7.9 0.3 -6" width="0.12" height="0.08" depth="0.02" rotation="0 180 0" material="color: #f5f5f5"></a-box>
+            <a-box position="7.9 0.3 0" width="0.12" height="0.08" depth="0.02" rotation="0 180 0" material="color: #f5f5f5"></a-box>
+            <a-box position="7.9 0.3 6" width="0.12" height="0.08" depth="0.02" rotation="0 180 0" material="color: #f5f5f5"></a-box>
+            
+            <!-- Light switches -->
+            <a-box position="-7.9 1.2 9" width="0.06" height="0.1" depth="0.02" material="color: #f5f5f5"></a-box>
+            <a-box position="7.9 1.2 -9" width="0.06" height="0.1" depth="0.02" rotation="0 180 0" material="color: #f5f5f5"></a-box>
+            
+            <!-- Air vents on ceiling -->
+            <a-entity position="-4 3.98 -6">
+                <a-plane width="0.6" height="0.6" rotation="90 0 0" material="color: #e8e8e8"></a-plane>
+                <a-plane width="0.5" height="0.02" position="0 0 0.01" rotation="90 0 0" material="color: #d0d0d0"></a-plane>
+                <a-plane width="0.5" height="0.02" position="0 0 -0.19" rotation="90 0 0" material="color: #d0d0d0"></a-plane>
+                <a-plane width="0.02" height="0.5" position="-0.19 0 0" rotation="90 90 0" material="color: #d0d0d0"></a-plane>
+                <a-plane width="0.02" height="0.5" position="0.19 0 0" rotation="90 90 0" material="color: #d0d0d0"></a-plane>
+            </a-entity>
+            
+            <a-entity position="4 3.98 6">
+                <a-plane width="0.6" height="0.6" rotation="90 0 0" material="color: #e8e8e8"></a-plane>
+                <a-plane width="0.5" height="0.02" position="0 0 0.01" rotation="90 0 0" material="color: #d0d0d0"></a-plane>
+                <a-plane width="0.5" height="0.02" position="0 0 -0.19" rotation="90 0 0" material="color: #d0d0d0"></a-plane>
+                <a-plane width="0.02" height="0.5" position="-0.19 0 0" rotation="90 90 0" material="color: #d0d0d0"></a-plane>
+                <a-plane width="0.02" height="0.5" position="0.19 0 0" rotation="90 90 0" material="color: #d0d0d0"></a-plane>
+            </a-entity>
+            
+            <!-- Improved lighting setup - much brighter -->
+            <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+            
+            <!-- Multiple overhead lights for better coverage -->
+            <a-entity position="0 3.9 0">
+                <a-cylinder height="0.05" radius="0.4" material="color: #ffffff; metalness: 0.8; roughness: 0.2"></a-cylinder>
+                <a-light type="point" position="0 -0.1 0" color="#ffffff" intensity="2" distance="25" decay="1.5"></a-light>
+            </a-entity>
+            
+            <a-entity position="-4 3.9 -6">
+                <a-cylinder height="0.05" radius="0.3" material="color: #ffffff; metalness: 0.8; roughness: 0.2"></a-cylinder>
+                <a-light type="point" position="0 -0.1 0" color="#ffffff" intensity="1.5" distance="20" decay="1.5"></a-light>
+            </a-entity>
+            
+            <a-entity position="4 3.9 -6">
+                <a-cylinder height="0.05" radius="0.3" material="color: #ffffff; metalness: 0.8; roughness: 0.2"></a-cylinder>
+                <a-light type="point" position="0 -0.1 0" color="#ffffff" intensity="1.5" distance="20" decay="1.5"></a-light>
+            </a-entity>
+            
+            <a-entity position="-4 3.9 6">
+                <a-cylinder height="0.05" radius="0.3" material="color: #ffffff; metalness: 0.8; roughness: 0.2"></a-cylinder>
+                <a-light type="point" position="0 -0.1 0" color="#ffffff" intensity="1.5" distance="20" decay="1.5"></a-light>
+            </a-entity>
+            
+            <a-entity position="4 3.9 6">
+                <a-cylinder height="0.05" radius="0.3" material="color: #ffffff; metalness: 0.8; roughness: 0.2"></a-cylinder>
+                <a-light type="point" position="0 -0.1 0" color="#ffffff" intensity="1.5" distance="20" decay="1.5"></a-light>
+            </a-entity>
+            
+            <!-- Bright directional light -->
+            <a-light 
+                type="directional" 
+                position="2 3 -2" 
+                color="#ffffff" 
+                intensity="0.6"
+                light="castShadow: true">
+            </a-light>
+            
+            <!-- Baseball entity (hidden by default) -->
+            <a-sphere 
+                id="baseball"
+                radius="0.12" 
+                position="0 1.6 -11.5"
+                material="color: #ffffff; roughness: 0.2; metalness: 0"
+                shadow="cast: true"
+                visible="false">
+            </a-sphere>
+            
+            <!-- Status text -->
+            <a-text value="Visual Startle Assessment\nAssessment loading..." 
+                    id="startleText"
+                    position="0 3 -11.8" 
+                    align="center" 
+                    width="8" 
+                    color="#333333"
+                    background="color: #ffffff">
+            </a-text>
+        </a-entity>
+
+        <!-- Visual Fixation Assessment -->
+        <a-entity id="fixationAssessment" visible="false">
+            <!-- Room structure similar to startle assessment -->
+            <!-- Floor -->
+            <a-plane 
+                position="0 0 0" 
+                rotation="-90 0 0" 
+                width="12" 
+                height="12" 
+                material="color: #f5f5f5; roughness: 0.8; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Ceiling -->
+            <a-plane 
+                position="0 3.5 0" 
+                rotation="90 0 0" 
+                width="12" 
+                height="12" 
+                material="color: #ffffff; roughness: 1; metalness: 0">
+            </a-plane>
+            
+            <!-- Back Wall -->
+            <a-plane 
+                position="0 1.75 -6" 
+                width="12" 
+                height="3.5" 
+                material="color: #fafafa; roughness: 0.9; metalness: 0"
+                shadow="receive: true">
+            </a-plane>
+            
+            <!-- Side Walls -->
+            <a-plane 
+                position="-6 1.75 0" 
+                rotation="0 90 0"
+                width="12" 
+                height="3.5" 
+                material="color: #fafafa; roughness: 0.9; metalness: 0">
+            </a-plane>
+            
+            <a-plane 
+                position="6 1.75 0" 
+                rotation="0 -90 0"
+                width="12" 
+                height="3.5" 
+                material="color: #fafafa; roughness: 0.9; metalness: 0">
+            </a-plane>
+            
+            <!-- Mirror Frame -->
+            <a-entity id="mirrorFrame" position="-2.5 1.6 -3">
+                <!-- Outer frame -->
+                <a-box 
+                    width="1.2" 
+                    height="1.6" 
+                    depth="0.05" 
+                    position="0 0 0"
+                    material="color: #333333; roughness: 0.3; metalness: 0.8">
+                </a-box>
+                
+                <!-- Reflective surface as fallback -->
+                <a-plane 
+                    width="1.0" 
+                    height="1.4" 
+                    position="0 0 0.03"
+                    material="color: #ffffff; metalness: 1; roughness: 0; shader: flat">
+                </a-plane>
+            </a-entity>
+            
+            <!-- Additional room details -->
+            <!-- Small table/counter below mirror -->
+            <a-box 
+                position="-2.5 0.8 -2.8" 
+                width="1.5" 
+                height="0.1" 
+                depth="0.6"
+                material="color: #e0e0e0; roughness: 0.9; metalness: 0">
+            </a-box>
+            
+            <!-- Lighting -->
+            <a-light type="ambient" color="#f0f0f0" intensity="0.5"></a-light>
+            <a-light type="directional" position="2 3 -2" color="#ffffff" intensity="0.6"></a-light>
+            <a-light type="point" position="-2.5 2.5 -2" color="#ffffff" intensity="0.4"></a-light>
+            
+            <a-text value="Visual Fixation Assessment\nFocus on the person's eyes" 
+                    position="-2.5 2.8 -3" 
+                    align="center" 
+                    width="6" 
+                    color="#333333"
+                    background="color: #ffffff">
+            </a-text>
+        </a-entity>
+
+        <!-- Visual Pursuit Assessment -->
+        <a-entity id="pursuitAssessment" visible="false">
+            <a-sky color="#0a0a0a"></a-sky>
+            <!-- 3D lighting setup -->
+            <a-light type="ambient" color="#333333"></a-light>
+            <a-light type="directional" position="0 2 -2" color="#ffffff" intensity="0.6"></a-light>
+            
+            <a-entity id="pursuitTarget"
+                geometry="primitive: sphere; radius: 0.3; segmentsWidth: 32; segmentsHeight: 16"
+                material="color: #ff0000; metalness: 0.6; roughness: 0.4; emissive: #ff0000; emissiveIntensity: 0.3"
+                position="-3 1.6 -4"
+                shadow="cast: true"
+                animation__move="property: position; from: -3 1.6 -4; to: 3 1.6 -4; dur: 8000; easing: easeInOutSine; loop: true; dir: alternate">
+                <a-light type="point" color="#ff0000" intensity="0.5" distance="3"></a-light>
+            </a-entity>
+            <!-- Add a subtle ground reference for depth perception -->
+            <a-plane position="0 0 -4" 
+                     rotation="-90 0 0" 
+                     width="10" height="10" 
+                     material="color: #111111; roughness: 1; metalness: 0"
+                     shadow="receive: true">
+            </a-plane>
+            <a-text value="Visual Pursuit Assessment\nFollow the moving target" 
+                    position="0 3 -4" 
+                    align="center" 
+                    width="8" 
+                    color="white">
+            </a-text>
+        </a-entity>
+
+        <!-- Object Recognition Assessment -->
+        <a-entity id="recognitionAssessment" visible="false">
+            <a-sky color="#1a1a2e"></a-sky>
+            <!-- 3D lighting -->
+            <a-light type="ambient" color="#303040"></a-light>
+            <a-light type="directional" position="2 3 -2" color="#ffffff" intensity="0.7" light="castShadow: true"></a-light>
+            <a-light type="point" position="-2 2 -3" color="#6666ff" intensity="0.3"></a-light>
+            
+            <a-entity id="recognitionObjects" position="0 1.6 -4">
+                <!-- Face-like stimuli and control shapes for recognition testing -->
+                <a-entity id="obj1" visible="false" position="0 0 0">
+                    <!-- 3D face representation -->
+                    <a-entity>
+                        <a-sphere color="#fdbcb4" radius="0.8" 
+                                material="metalness: 0.1; roughness: 0.8"
+                                shadow="cast: true">
+                            <!-- Eyes -->
+                            <a-sphere color="#333333" radius="0.12" position="-0.25 0.2 0.7"
+                                    material="metalness: 0.8; roughness: 0.2"></a-sphere>
+                            <a-sphere color="#333333" radius="0.12" position="0.25 0.2 0.7"
+                                    material="metalness: 0.8; roughness: 0.2"></a-sphere>
+                            <!-- Mouth -->
+                            <a-torus color="#333333" radius="0.2" radius-tubular="0.05" 
+                                   position="0 -0.2 0.7" 
+                                   rotation="0 0 90"
+                                   arc="180"
+                                   material="metalness: 0.3; roughness: 0.7"></a-torus>
+                        </a-sphere>
+                    </a-entity>
+                    <a-text value="Face Stimulus" position="0 -1.2 0" align="center" width="4" color="white"></a-text>
+                </a-entity>
+                <a-entity id="obj2" visible="false" position="0 0 0">
+                    <!-- Scrambled face (control) -->
+                    <a-entity>
+                        <a-sphere color="#fdbcb4" radius="0.8" 
+                                material="metalness: 0.1; roughness: 0.8"
+                                shadow="cast: true">
+                            <!-- Scrambled features -->
+                            <a-sphere color="#333333" radius="0.12" position="-0.1 -0.3 0.7"
+                                    material="metalness: 0.8; roughness: 0.2"></a-sphere>
+                            <a-sphere color="#333333" radius="0.12" position="0.3 0.1 0.7"
+                                    material="metalness: 0.8; roughness: 0.2"></a-sphere>
+                            <a-torus color="#333333" radius="0.2" radius-tubular="0.05" 
+                                   position="-0.2 0.3 0.7" 
+                                   rotation="0 0 45"
+                                   arc="180"
+                                   material="metalness: 0.3; roughness: 0.7"></a-torus>
+                        </a-sphere>
+                    </a-entity>
+                    <a-text value="Scrambled Face" position="0 -1.2 0" align="center" width="4" color="white"></a-text>
+                </a-entity>
+                <a-entity id="obj3" visible="false" position="0 0 0">
+                    <!-- Geometric control -->
+                    <a-dodecahedron color="#4ecdc4" radius="0.8"
+                                  material="metalness: 0.5; roughness: 0.5"
+                                  shadow="cast: true"
+                                  animation__rotate="property: rotation; to: 360 360 0; dur: 10000; loop: true; easing: linear">
+                    </a-dodecahedron>
+                    <a-text value="Control Shape" position="0 -1.2 0" align="center" width="4" color="white"></a-text>
+                </a-entity>
+            </a-entity>
+            <a-text value="Object Recognition Assessment\nObserve the stimuli" 
+                    id="recognitionText"
+                    position="0 3 -4" 
+                    align="center" 
+                    width="8" 
+                    color="white">
+            </a-text>
+        </a-entity>
+
+        <!-- Object Localization Assessment -->
+        <a-entity id="localizationAssessment" visible="false">
+            <a-sky color="#0f0f0f"></a-sky>
+            <!-- 3D lighting setup -->
+            <a-light type="ambient" color="#202020"></a-light>
+            <a-light type="directional" position="0 3 -2" color="#ffffff" intensity="0.5"></a-light>
+            
+            <a-entity id="localizationTargets">
+                <a-entity id="loc1" class="loc-target" position="-2 2 -4" visible="false">
+                    <a-torus color="#ffffff" radius="0.3" radius-tubular="0.1"
+                        material="emissive: #ffffff; emissiveIntensity: 0.3; metalness: 0.7; roughness: 0.3"
+                        shadow="cast: true"
+                        animation__rotate="property: rotation; to: 0 360 0; dur: 3000; loop: true; easing: linear">
+                    </a-torus>
+                    <a-light type="point" color="#ffffff" intensity="0.3" distance="2"></a-light>
+                </a-entity>
+                <a-entity id="loc2" class="loc-target" position="2 2 -4" visible="false">
+                    <a-torus color="#00ffff" radius="0.3" radius-tubular="0.1"
+                        material="emissive: #00ffff; emissiveIntensity: 0.3; metalness: 0.7; roughness: 0.3"
+                        shadow="cast: true"
+                        animation__rotate="property: rotation; to: 0 360 0; dur: 3000; loop: true; easing: linear">
+                    </a-torus>
+                    <a-light type="point" color="#00ffff" intensity="0.3" distance="2"></a-light>
+                </a-entity>
+                <a-entity id="loc3" class="loc-target" position="0 0.5 -4" visible="false">
+                    <a-torus color="#ffff00" radius="0.3" radius-tubular="0.1"
+                        material="emissive: #ffff00; emissiveIntensity: 0.3; metalness: 0.7; roughness: 0.3"
+                        shadow="cast: true"
+                        animation__rotate="property: rotation; to: 0 360 0; dur: 3000; loop: true; easing: linear">
+                    </a-torus>
+                    <a-light type="point" color="#ffff00" intensity="0.3" distance="2"></a-light>
+                </a-entity>
+                <a-entity id="loc4" class="loc-target" position="-2 0.5 -4" visible="false">
+                    <a-torus color="#ff00ff" radius="0.3" radius-tubular="0.1"
+                        material="emissive: #ff00ff; emissiveIntensity: 0.3; metalness: 0.7; roughness: 0.3"
+                        shadow="cast: true"
+                        animation__rotate="property: rotation; to: 0 360 0; dur: 3000; loop: true; easing: linear">
+                    </a-torus>
+                    <a-light type="point" color="#ff00ff" intensity="0.3" distance="2"></a-light>
+                </a-entity>
+                <a-entity id="loc5" class="loc-target" position="2 0.5 -4" visible="false">
+                    <a-torus color="#88ff88" radius="0.3" radius-tubular="0.1"
+                        material="emissive: #88ff88; emissiveIntensity: 0.3; metalness: 0.7; roughness: 0.3"
+                        shadow="cast: true"
+                        animation__rotate="property: rotation; to: 0 360 0; dur: 3000; loop: true; easing: linear">
+                    </a-torus>
+                    <a-light type="point" color="#88ff88" intensity="0.3" distance="2"></a-light>
+                </a-entity>
+            </a-entity>
+            <a-text value="Object Localization Assessment\nTargets will appear in different locations" 
+                    id="localizationText"
+                    position="0 3 -4" 
+                    align="center" 
+                    width="8" 
+                    color="white">
+            </a-text>
+        </a-entity>
+
     </a-scene>
-  </body>
+
+    <script>
+        // Assessment Controller
+        class AssessmentController {
+            constructor() {
+                this.currentAssessment = null;
+                this.assessmentTimer = null;
+                this.init();
+            }
+
+            init() {
+                // Menu button clicks
+                document.querySelectorAll('.menu-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        // Only respond to clicks if we're currently in the menu
+                        if (this.currentAssessment === null) {
+                            const assessment = e.currentTarget.getAttribute('data-assessment');
+                            this.startAssessment(assessment);
+                        }
+                    });
+                });
+
+                // Controller B button to return to menu
+                document.addEventListener('bbuttondown', () => {
+                    this.returnToMenu();
+                });
+
+                // Keyboard fallback (B key)
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'b' || e.key === 'B') {
+                        this.returnToMenu();
+                    }
+                });
+            }
+
+            hideAllScenes() {
+                document.getElementById('mainMenu').setAttribute('visible', false);
+                document.getElementById('startleAssessment').setAttribute('visible', false);
+                document.getElementById('fixationAssessment').setAttribute('visible', false);
+                document.getElementById('pursuitAssessment').setAttribute('visible', false);
+                document.getElementById('recognitionAssessment').setAttribute('visible', false);
+                document.getElementById('localizationAssessment').setAttribute('visible', false);
+                
+                // Disable menu button interactions
+                document.querySelectorAll('.menu-btn').forEach(btn => {
+                    btn.classList.remove('clickable');
+                });
+            }
+
+            returnToMenu() {
+                clearTimeout(this.assessmentTimer);
+                
+                // Hide any active baseballs
+                const baseball = document.getElementById('baseball');
+                if (baseball) {
+                    baseball.setAttribute('visible', false);
+                    baseball.removeAttribute('animation');
+                }
+                
+                this.hideAllScenes();
+                document.getElementById('mainMenu').setAttribute('visible', true);
+                this.currentAssessment = null;
+                
+                // Re-enable menu button interactions
+                document.querySelectorAll('.menu-btn').forEach(btn => {
+                    btn.classList.add('clickable');
+                });
+                
+                // Re-enable pointer events on menu
+                document.getElementById('menuButtons').style.pointerEvents = 'auto';
+                
+                console.log('Returned to menu');
+            }
+
+            startAssessment(type) {
+                this.hideAllScenes();
+                this.currentAssessment = type;
+                console.log(`Starting ${type} assessment`);
+                
+                // Extra safety: ensure menu buttons aren't clickable during assessments
+                document.getElementById('menuButtons').style.pointerEvents = 'none';
+
+                switch(type) {
+                    case 'startle':
+                        this.runStartleAssessment();
+                        break;
+                    case 'fixation':
+                        this.runFixationAssessment();
+                        break;
+                    case 'pursuit':
+                        this.runPursuitAssessment();
+                        break;
+                    case 'recognition':
+                        this.runRecognitionAssessment();
+                        break;
+                    case 'localization':
+                        this.runLocalizationAssessment();
+                        break;
+                }
+            }
+
+            runStartleAssessment() {
+                const scene = document.getElementById('startleAssessment');
+                const text = document.getElementById('startleText');
+                const baseball = document.getElementById('baseball');
+                
+                scene.setAttribute('visible', true);
+                text.setAttribute('value', 'Visual Startle Assessment\nAssessment loading...');
+                
+                let trialCount = 0;
+                const maxTrials = 5;
+                
+                const throwBaseball = () => {
+                    if (trialCount >= maxTrials || this.currentAssessment !== 'startle') {
+                        text.setAttribute('value', 'Visual Startle Assessment\nComplete');
+                        setTimeout(() => this.returnToMenu(), 2000);
+                        return;
+                    }
+                    
+                    // Random delay between 2-5 seconds
+                    const delay = 2000 + Math.random() * 3000;
+                    
+                    this.assessmentTimer = setTimeout(() => {
+                        // VR camera is at exactly 1.6m height
+                        const vrEyeHeight = 1.6;
+                        
+                        // Reset baseball position at VR eye level
+                        baseball.setAttribute('position', `0 ${vrEyeHeight} -11.5`);
+                        baseball.setAttribute('visible', true);
+                        
+                        // Animate baseball flying directly at VR viewer's eyes
+                        baseball.setAttribute('animation', {
+                            property: 'position',
+                            from: `0 ${vrEyeHeight} -11.5`,
+                            to: `0 ${vrEyeHeight} 0`,
+                            dur: 300,
+                            easing: 'linear'
+                        });
+                        
+                        // Hide baseball after it reaches viewer
+                        setTimeout(() => {
+                            baseball.setAttribute('visible', false);
+                            baseball.removeAttribute('animation');
+                            trialCount++;
+                            
+                            // Continue with next trial
+                            throwBaseball();
+                        }, 350);
+                    }, delay);
+                };
+                
+                // Start after initial loading delay
+                this.assessmentTimer = setTimeout(() => {
+                    text.setAttribute('value', '');  // Clear text during trials
+                    throwBaseball();
+                }, 2000);
+            }
+
+            runFixationAssessment() {
+                const scene = document.getElementById('fixationAssessment');
+                scene.setAttribute('visible', true);
+                
+                // Run for 30 seconds
+                this.assessmentTimer = setTimeout(() => {
+                    this.returnToMenu();
+                }, 30000);
+            }
+
+            runPursuitAssessment() {
+                const scene = document.getElementById('pursuitAssessment');
+                scene.setAttribute('visible', true);
+                
+                // Run for 40 seconds (5 complete cycles)
+                this.assessmentTimer = setTimeout(() => {
+                    this.returnToMenu();
+                }, 40000);
+            }
+
+            runRecognitionAssessment() {
+                const scene = document.getElementById('recognitionAssessment');
+                const objects = ['obj1', 'obj2', 'obj3'];
+                const objectNames = ['Face Stimulus', 'Scrambled Face', 'Control Shape'];
+                const text = document.getElementById('recognitionText');
+                
+                scene.setAttribute('visible', true);
+                
+                let currentIndex = 0;
+                
+                const showNextObject = () => {
+                    if (currentIndex >= objects.length || this.currentAssessment !== 'recognition') {
+                        text.setAttribute('value', 'Object Recognition Assessment\nComplete');
+                        setTimeout(() => this.returnToMenu(), 2000);
+                        return;
+                    }
+                    
+                    // Hide all objects
+                    objects.forEach(id => document.getElementById(id).setAttribute('visible', false));
+                    
+                    // Show current object
+                    document.getElementById(objects[currentIndex]).setAttribute('visible', true);
+                    text.setAttribute('value', `Object Recognition Assessment\n${objectNames[currentIndex]} - ${currentIndex + 1} of ${objects.length}`);
+                    
+                    currentIndex++;
+                    
+                    // Show each object for 5 seconds
+                    this.assessmentTimer = setTimeout(showNextObject, 5000);
+                };
+                
+                // Start sequence
+                this.assessmentTimer = setTimeout(showNextObject, 2000);
+            }
+
+            runLocalizationAssessment() {
+                const scene = document.getElementById('localizationAssessment');
+                const targets = ['loc1', 'loc2', 'loc3', 'loc4', 'loc5'];
+                const text = document.getElementById('localizationText');
+                
+                scene.setAttribute('visible', true);
+                
+                let sequence = [...targets, ...targets].sort(() => Math.random() - 0.5); // Randomized sequence
+                let currentIndex = 0;
+                
+                const showNextTarget = () => {
+                    if (currentIndex >= sequence.length || this.currentAssessment !== 'localization') {
+                        text.setAttribute('value', 'Object Localization Assessment\nComplete');
+                        setTimeout(() => this.returnToMenu(), 2000);
+                        return;
+                    }
+                    
+                    // Hide all targets
+                    targets.forEach(id => document.getElementById(id).setAttribute('visible', false));
+                    
+                    // Show current target
+                    document.getElementById(sequence[currentIndex]).setAttribute('visible', true);
+                    text.setAttribute('value', `Object Localization Assessment\nTarget ${currentIndex + 1} of ${sequence.length}`);
+                    
+                    currentIndex++;
+                    
+                    // Show each target for 3 seconds
+                    this.assessmentTimer = setTimeout(showNextTarget, 3000);
+                };
+                
+                // Start sequence
+                this.assessmentTimer = setTimeout(showNextTarget, 2000);
+            }
+        }
+
+        // Initialize controller when scene is loaded
+        document.querySelector('a-scene').addEventListener('loaded', () => {
+            new AssessmentController();
+            console.log('CRS-R Visual Function Assessment VR App Initialized');
+        });
+    </script>
+</body>
 </html>
